@@ -52,4 +52,4 @@ $wire->addHookAfter('AccessByQueryString::replacementMarkup', function(HookEvent
 
 ## Screenshot
 
-![screenshot](https://user-images.githubusercontent.com/1538852/55222372-a041ea80-5270-11e9-9fb2-59a8111368b1.png)
+![screenshot](https://user-images.githubusercontent.com/1538852/55222567-1d6d5f80-5271-11e9-93f5-d0badf04c3d2.png)
