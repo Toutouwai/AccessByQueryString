@@ -138,7 +138,7 @@ EOD;
 		$f->label = $this->_('Access rules');
 		$f->description = $this->_('The rules defined below determine which pages will require an "access" GET variable in order to view. One rule per line. Format is [GET variable]??[selector]') . "\n";
 		$f->description .= $this->_('So a line "rumpelstiltskin??template=skills, title~=gold" would mean that unless the GET variable "access=rumpelstiltskin" is present in the URL any pages using the template "skills" with the word "gold" in the title will not be viewable.') . "\n";
-		$f->description .= $this->_('The GET variable only needs to be present *once* on a page matching the selector in the rule. After that the user may view any matching pages without needing the GET variable for the current session.') . "\n";
+		$f->description .= $this->_('The GET variable only needs to be present *once* on a page matching the selector in the rule. After that the visitor may view any matching pages without needing the GET variable for the current session.') . "\n";
 		$f->notes = $this->_('To disable the module simply leave this field empty.');
 		$f->value = $this->$f_name;
 		$f->rows = 5;
