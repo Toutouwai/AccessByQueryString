@@ -1,0 +1,209 @@
+<?php namespace ProcessWire;
+
+/**
+ *
+ * Access By Query String
+ *
+ * @author Robin Sallis
+ *
+ * ProcessWire 3.x
+ * Copyright (C) 2011 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class AccessByQueryString extends WireData implements Module, ConfigurableModule {
+
+	/**
+	 * Module information
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'Access By Query String',
+			'summary' => 'Grant/deny access to pages according to query string.',
+			'version' => '0.1.0',
+			'author' => 'Robin Sallis',
+			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
+			'icon' => 'key',
+			'autoload' => 'template!=admin',
+			'requires' => 'ProcessWire>=3.0.0',
+		);
+	}
+
+	/**
+	 * Construct
+	 */
+	public function __construct() {
+		parent::__construct();
+		$this->no_access_action = 0;
+		$this->replacement_title = 'Website coming soon';
+		$this->replacement_message = 'Website coming soon.';
+	}
+
+	/**
+	 * Ready
+	 */
+	public function ready() {
+		if(!$this->wire('user')->isSuperuser() && !empty($this->access_rules)) {
+			$this->addHookAfter('Page::render', $this, 'checkAccess');
+		}
+	}
+
+	/**
+	 * Check if rendered page may be accessed
+	 *
+	 * @param HookEvent $event
+	 */
+	protected function checkAccess(HookEvent $event) {
+
+		/* @var Page $page */
+		$page = $event->object;
+		$session = $this->wire('session');
+
+		// Return if this is the 404 page
+		if($page->id === $this->wire('config')->http404PageID) return;
+
+		// Determine any relevant access keys for the page
+		$matches = false;
+		$access_keys = array();
+		foreach($this->access_rules as $access_key => $selector) {
+			// There is a bug with $page->matches(): https://github.com/processwire/processwire-issues/issues/837
+			if($page->matches($selector)) {
+				$matches = true;
+				$access_keys[] = $access_key;
+			}
+		}
+		// Return if page does not match any of the access rules
+		if(!$matches) return;
+
+		// Get access values
+		$visitor_access = (array) $session->getFor($this, 'access');
+		$get_var = $this->wire('input')->get->text('access');
+		if($get_var && isset($this->access_rules[$get_var])) {
+			$visitor_access[$get_var] = '';
+			$session->setFor($this, 'access', $visitor_access);
+		}
+
+		// Return if visitor is allowed to access this page
+		foreach($access_keys as $access_key) {
+			if(isset($visitor_access[$access_key])) return;
+		}
+
+		// Throw a 404 if this action is selected in the config
+		if($this->no_access_action == 1) throw new Wire404Exception();
+
+		// Replace the page markup
+		$event->return = $this->replacementMarkup($page, $access_keys);
+	}
+
+	/**
+	 * Get replacement markup to render
+	 *
+	 * @param Page $page The page that will have its rendered markup replaced
+	 * @param array $access_keys Access keys that apply to the page
+	 * @return string
+	 */
+	public function ___replacementMarkup($page, $access_keys) {
+		$out = <<<EOD
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{$this->replacement_title}</title>
+</head>
+<body style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; padding:20px;">
+{$this->replacement_message}
+</body>
+</html>
+EOD;
+		return $out;
+	}
+
+	/**
+	 * Config inputfields
+	 *
+	 * @param InputfieldWrapper $inputfields
+	 */
+	public function getModuleConfigInputfields($inputfields) {
+		$modules = $this->wire('modules');
+
+		/* @var InputfieldTextarea $f */
+		$f = $modules->InputfieldTextarea;
+		$f_name = 'access_rules_str';
+		$f->name = $f_name;
+		$f->label = $this->_('Access rules');
+		$f->description = $this->_('The rules defined below determine which pages will require an "access" GET variable in order to view. One rule per line. Format is [GET variable]??[selector]') . "\n";
+		$f->description .= $this->_('So a line "rumpelstiltskin??template=skills, title~=gold" would mean that unless the GET variable "access=rumpelstiltskin" is present in the URL any pages using the template "product" with the word "gold" in the title will not be viewable.') . "\n";
+		$f->description .= $this->_('The GET variable only needs to be present *once* on a page matching the selector in the rule. After that the user may view any matching pages without needing the GET variable for the current session.') . "\n";
+		$f->notes = $this->_('To disable the module simply leave this field empty.');
+		$f->value = $this->$f_name;
+		$f->rows = 5;
+		$inputfields->add($f);
+
+		/* @var InputfieldRadios $f */
+		$f = $modules->InputfieldRadios;
+		$f_name = 'no_access_action';
+		$f->name = $f_name;
+		$f->label = $this->_('Action to take if the visitor may not access the rendered page');
+		$f->addOption(0, $this->_('Replace the rendered markup'));
+		$f->addOption(1, $this->_('Throw a 404 exception'));
+		$f->value = $this->$f_name;
+		$inputfields->add($f);
+
+		/* @var InputfieldFieldset $f */
+		$fs = $this->wire('modules')->InputfieldFieldset;
+		$fs->label = $this->_('Replacement markup');
+		$fs->description .= $this->_('If you need more advanced markup than is possible with the options below then you can hook `AccessByQueryString::replacementMarkup()`.');
+		$fs->showIf = 'no_access_action=0';
+
+		/* @var InputfieldText $f */
+		$f = $this->wire('modules')->InputfieldText;
+		$f_name = 'replacement_title';
+		$f->name = $f_name;
+		$f->label = $this->_('Meta title');
+		$f->value = $this->$f_name;
+		$fs->add($f);
+
+		/* @var InputfieldTextarea $f */
+		$f = $this->wire('modules')->InputfieldTextarea;
+		$f_name = 'replacement_message';
+		$f->name = $f_name;
+		$f->label = $this->_('Message');
+		$f->value = $this->$f_name;
+		$f->rows = 3;
+		$fs->add($f);
+
+		$inputfields->add($fs);
+
+		// Add hook to process config before save
+		$modules->addHookBefore('saveConfig', $this, 'beforeConfigSave');
+	}
+
+	/**
+	 * Process the submitted config data
+	 *
+	 * @param HookEvent $event
+	 */
+	protected function beforeConfigSave(HookEvent $event) {
+		if($event->arguments(0) != $this) return;
+		$data = $event->arguments(1);
+		if(!empty($data['access_rules_str'])) {
+			$lines = explode("\n", str_replace("\r", "", $data['access_rules_str']));
+			$rules = array();
+			foreach($lines as $key => $value) {
+				if(!strpos($value, '??')) continue;
+				list($k, $v) = explode('??', $value, 2);
+				$rules[trim($k)] = trim($v);
+			}
+			$data['access_rules'] = $rules;
+		} else {
+			$data['access_rules'] = array();
+		}
+		$event->arguments(1, $data);
+	}
+
+}
