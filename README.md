@@ -14,7 +14,7 @@ Superusers are not affected by the module.
 
 [Install](http://modules.processwire.com/install-uninstall/) the Access By Query String module.
 
-Define access rules in the format [GET variable]??[selector], one per line.
+Define access rules in the format `[GET variable]??[selector]`, one per line.
 
 As an example the rule...
 
