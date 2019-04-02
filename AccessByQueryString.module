@@ -24,7 +24,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		return array(
 			'title' => 'Access By Query String',
 			'summary' => 'Grant/deny access to pages according to query string.',
-			'version' => '0.1.0',
+			'version' => '0.1.1',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
 			'icon' => 'key',
@@ -96,7 +96,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		if($this->no_access_action == 1) throw new Wire404Exception();
 
 		// Replace the page markup
-		$event->return = $this->replacementMarkup($page, $access_keys);
+		$event->return = $this->replacementMarkup($page, $access_keys, $this->replacement_title, $this->replacement_message);
 	}
 
 	/**
@@ -104,19 +104,21 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	 *
 	 * @param Page $page The page that will have its rendered markup replaced
 	 * @param array $access_keys Access keys that apply to the page
+	 * @param string $title The title defined in the module config
+	 * @param string $message The message defined in the module config
 	 * @return string
 	 */
-	public function ___replacementMarkup($page, $access_keys) {
+	public function ___replacementMarkup($page, $access_keys, $title, $message) {
 		$out = <<<EOD
 <!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>{$this->replacement_title}</title>
+	<title>$title</title>
 </head>
 <body style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; padding:20px;">
-{$this->replacement_message}
+$message
 </body>
 </html>
 EOD;

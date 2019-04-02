@@ -44,6 +44,10 @@ $wire->addHookAfter('AccessByQueryString::replacementMarkup', function(HookEvent
     $page = $event->arguments(0);
     // An array of access keys that apply to the page
     $access_keys = $event->arguments(1);
+    // The title
+    $title = $event->arguments(2);
+    // The message
+    $message = $event->arguments(3);
 
     // Return some markup
     $event->return = 'Your markup';
