@@ -24,7 +24,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		return array(
 			'title' => 'Access By Query String',
 			'summary' => 'Grant/deny access to pages according to query string.',
-			'version' => '0.1.1',
+			'version' => '0.1.2',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
 			'icon' => 'key',
@@ -63,8 +63,8 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		$page = $event->object;
 		$session = $this->wire('session');
 
-		// Return if this is the 404 page
-		if($page->id === $this->wire('config')->http404PageID) return;
+		// Return if action is throw 404 and this is the 404 page
+		if($this->no_access_action == 1 && $page->id === $this->wire('config')->http404PageID) return;
 
 		// Determine any relevant access keys for the page
 		$matches = false;
