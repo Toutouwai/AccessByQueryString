@@ -24,7 +24,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		return array(
 			'title' => 'Access By Query String',
 			'summary' => 'Grant/deny access to pages according to query string.',
-			'version' => '0.1.2',
+			'version' => '0.1.3',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
 			'icon' => 'key',
@@ -47,8 +47,23 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	 * Ready
 	 */
 	public function ready() {
-		if(!$this->wire('user')->isSuperuser() && !empty($this->access_rules)) {
-			$this->addHookAfter('Page::render', $this, 'checkAccess');
+		// Add page render hook when needed
+		if(!empty($this->access_rules)) {
+			$user = $this->wire('user');
+			$exempt = false;
+			if($user->isSuperuser()) {
+				$exempt = true;
+			} else {
+				foreach($this->exempt_roles as $role_id) {
+					if($user->hasRole($role_id)) {
+						$exempt = true;
+						break;
+					}
+				}
+			}
+			if(!$exempt) {
+				$this->addHookAfter('Page::render', $this, 'checkAccess');
+			}
 		}
 	}
 
@@ -59,7 +74,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	 */
 	protected function checkAccess(HookEvent $event) {
 
-		/* @var Page $page */
+		/** @var Page $page */
 		$page = $event->object;
 		$session = $this->wire('session');
 
@@ -133,7 +148,19 @@ EOD;
 	public function getModuleConfigInputfields($inputfields) {
 		$modules = $this->wire('modules');
 
-		/* @var InputfieldTextarea $f */
+		$selectable_roles = $this->wire('roles')->find("name!=superuser|guest");
+		/** @var InputfieldAsmSelect $f */
+		$f = $modules->get('InputfieldAsmSelect');
+		$f_name = 'exempt_roles';
+		$f->name = $f_name;
+		$f->label = $this->_('Exempt roles');
+		$f->description = $this->_('Logged-in users with any role selected here will be exempt from the access restrictions. Superusers are always exempt.');
+		foreach($selectable_roles as $selectable_role) $f->addOption($selectable_role->id, $selectable_role->name);
+		$f->value = $this->$f_name;
+		$inputfields->add($f);
+
+
+		/** @var InputfieldTextarea $f */
 		$f = $modules->InputfieldTextarea;
 		$f_name = 'access_rules_str';
 		$f->name = $f_name;
@@ -146,7 +173,7 @@ EOD;
 		$f->rows = 5;
 		$inputfields->add($f);
 
-		/* @var InputfieldRadios $f */
+		/** @var InputfieldRadios $f */
 		$f = $modules->InputfieldRadios;
 		$f_name = 'no_access_action';
 		$f->name = $f_name;
@@ -156,13 +183,13 @@ EOD;
 		$f->value = $this->$f_name;
 		$inputfields->add($f);
 
-		/* @var InputfieldFieldset $f */
+		/** @var InputfieldFieldset $f */
 		$fs = $this->wire('modules')->InputfieldFieldset;
 		$fs->label = $this->_('Replacement markup');
 		$fs->description .= $this->_('If you need more advanced markup than is possible with the options below then you can hook `AccessByQueryString::replacementMarkup()`.');
 		$fs->showIf = 'no_access_action=0';
 
-		/* @var InputfieldText $f */
+		/** @var InputfieldText $f */
 		$f = $this->wire('modules')->InputfieldText;
 		$f_name = 'replacement_title';
 		$f->name = $f_name;
@@ -170,7 +197,7 @@ EOD;
 		$f->value = $this->$f_name;
 		$fs->add($f);
 
-		/* @var InputfieldTextarea $f */
+		/** @var InputfieldTextarea $f */
 		$f = $this->wire('modules')->InputfieldTextarea;
 		$f_name = 'replacement_message';
 		$f->name = $f_name;

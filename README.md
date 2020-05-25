@@ -8,11 +8,11 @@ The view protection does not provide a high level of security so should only be 
 
 Once a visitor has successfully accessed a protected page via the GET variable then they can view any other page protected by the same access rule without needing the GET variable for that browsing session.
 
-Superusers are not affected by the module.
-
 ## Usage
 
 [Install](http://modules.processwire.com/install-uninstall/) the Access By Query String module.
+
+Select any roles you want to be exempt from the access restrictions imposed by this module. Superusers are always exempt.
 
 Define access rules in the format `[GET variable]??[selector]`, one per line.
 
