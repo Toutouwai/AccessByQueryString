@@ -24,7 +24,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		return array(
 			'title' => 'Access By Query String',
 			'summary' => 'Grant/deny access to pages according to query string.',
-			'version' => '0.1.3',
+			'version' => '0.1.4',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
 			'icon' => 'key',
@@ -38,6 +38,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	 */
 	public function __construct() {
 		parent::__construct();
+		$this->exempt_roles = [];
 		$this->no_access_action = 0;
 		$this->replacement_title = 'Website coming soon';
 		$this->replacement_message = 'Website coming soon.';
