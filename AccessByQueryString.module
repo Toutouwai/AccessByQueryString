@@ -24,7 +24,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		return array(
 			'title' => 'Access By Query String',
 			'summary' => 'Grant/deny access to pages according to query string.',
-			'version' => '0.1.4',
+			'version' => '0.1.5',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
 			'icon' => 'key',
@@ -50,7 +50,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	public function ready() {
 		// Add page render hook when needed
 		if(!empty($this->access_rules)) {
-			$user = $this->wire('user');
+			$user = $this->wire()->user;
 			$exempt = false;
 			if($user->isSuperuser()) {
 				$exempt = true;
@@ -63,7 +63,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 				}
 			}
 			if(!$exempt) {
-				$this->addHookAfter('Page::render', $this, 'checkAccess');
+				$this->addHookBefore('PageRender::renderPage', $this, 'checkAccess');
 			}
 		}
 	}
@@ -75,12 +75,14 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	 */
 	protected function checkAccess(HookEvent $event) {
 
+		/** @var HookEvent $event_2 */
+		$event_2 = $event->arguments(0);
 		/** @var Page $page */
-		$page = $event->object;
-		$session = $this->wire('session');
+		$page = $event_2->object;
+		$session = $this->wire()->session;
 
 		// Return if action is throw 404 and this is the 404 page
-		if($this->no_access_action == 1 && $page->id === $this->wire('config')->http404PageID) return;
+		if($this->no_access_action == 1 && $page->id === $this->wire()->config->http404PageID) return;
 
 		// Determine any relevant access keys for the page
 		$matches = false;
@@ -97,7 +99,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 
 		// Get access values
 		$visitor_access = (array) $session->getFor($this, 'access');
-		$get_var = $this->wire('input')->get->text('access');
+		$get_var = $this->wire()->input->get->text('access');
 		if($get_var && isset($this->access_rules[$get_var])) {
 			$visitor_access[$get_var] = '';
 			$session->setFor($this, 'access', $visitor_access);
@@ -112,7 +114,8 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		if($this->no_access_action == 1) throw new Wire404Exception();
 
 		// Replace the page markup
-		$event->return = $this->replacementMarkup($page, $access_keys, $this->replacement_title, $this->replacement_message);
+		$event->replace = true;
+		$event_2->return = $this->replacementMarkup($page, $access_keys, $this->replacement_title, $this->replacement_message);
 	}
 
 	/**
@@ -125,7 +128,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 	 * @return string
 	 */
 	public function ___replacementMarkup($page, $access_keys, $title, $message) {
-		$out = <<<EOD
+		$out = <<<EOT
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -137,7 +140,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 $message
 </body>
 </html>
-EOD;
+EOT;
 		return $out;
 	}
 
@@ -147,9 +150,9 @@ EOD;
 	 * @param InputfieldWrapper $inputfields
 	 */
 	public function getModuleConfigInputfields($inputfields) {
-		$modules = $this->wire('modules');
+		$modules = $this->wire()->modules;
 
-		$selectable_roles = $this->wire('roles')->find("name!=superuser|guest");
+		$selectable_roles = $this->wire()->roles->find("name!=superuser|guest");
 		/** @var InputfieldAsmSelect $f */
 		$f = $modules->get('InputfieldAsmSelect');
 		$f_name = 'exempt_roles';
@@ -167,7 +170,7 @@ EOD;
 		$f->name = $f_name;
 		$f->label = $this->_('Access rules');
 		$f->description = $this->_('The rules defined below determine which pages will require an "access" GET variable in order to view. One rule per line. Format is [GET variable]??[selector]') . "\n";
-		$f->description .= $this->_('So a line "rumpelstiltskin??template=skills, title~=gold" would mean that unless the GET variable "access=rumpelstiltskin" is present in the URL any pages using the template "skills" with the word "gold" in the title will not be viewable.') . "\n";
+		$f->description .= $this->_('So a line "4fU4ns7ZWXar??template!=admin" would mean that unless the GET variable "access=4fU4ns7ZWXar" is present in the URL any front-end page will not be viewable.') . "\n";
 		$f->description .= $this->_('The GET variable only needs to be present *once* on a page matching the selector in the rule. After that the visitor may view any matching pages without needing the GET variable for the current session.') . "\n";
 		$f->notes = $this->_('To disable the module simply leave this field empty.');
 		$f->value = $this->$f_name;
@@ -185,13 +188,13 @@ EOD;
 		$inputfields->add($f);
 
 		/** @var InputfieldFieldset $f */
-		$fs = $this->wire('modules')->InputfieldFieldset;
+		$fs = $modules->InputfieldFieldset;
 		$fs->label = $this->_('Replacement markup');
 		$fs->description .= $this->_('If you need more advanced markup than is possible with the options below then you can hook `AccessByQueryString::replacementMarkup()`.');
 		$fs->showIf = 'no_access_action=0';
 
 		/** @var InputfieldText $f */
-		$f = $this->wire('modules')->InputfieldText;
+		$f = $modules->InputfieldText;
 		$f_name = 'replacement_title';
 		$f->name = $f_name;
 		$f->label = $this->_('Meta title');
@@ -199,7 +202,7 @@ EOD;
 		$fs->add($f);
 
 		/** @var InputfieldTextarea $f */
-		$f = $this->wire('modules')->InputfieldTextarea;
+		$f = $modules->InputfieldTextarea;
 		$f_name = 'replacement_message';
 		$f->name = $f_name;
 		$f->label = $this->_('Message');
