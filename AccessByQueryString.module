@@ -24,7 +24,7 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 		return array(
 			'title' => 'Access By Query String',
 			'summary' => 'Grant/deny access to pages according to query string.',
-			'version' => '0.1.5',
+			'version' => '0.1.6',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/AccessByQueryString',
 			'icon' => 'key',
@@ -115,6 +115,8 @@ class AccessByQueryString extends WireData implements Module, ConfigurableModule
 
 		// Replace the page markup
 		$event->replace = true;
+		// Cancel all other page render hooks - for example, to prevent ProCache caching the replacement markup
+		$event_2->cancelHooks = true;
 		$event_2->return = $this->replacementMarkup($page, $access_keys, $this->replacement_title, $this->replacement_message);
 	}
 
@@ -172,7 +174,9 @@ EOT;
 		$f->description = $this->_('The rules defined below determine which pages will require an "access" GET variable in order to view. One rule per line. Format is [GET variable]??[selector]') . "\n";
 		$f->description .= $this->_('So a line "4fU4ns7ZWXar??template!=admin" would mean that unless the GET variable "access=4fU4ns7ZWXar" is present in the URL any front-end page will not be viewable.') . "\n";
 		$f->description .= $this->_('The GET variable only needs to be present *once* on a page matching the selector in the rule. After that the visitor may view any matching pages without needing the GET variable for the current session.') . "\n";
-		$f->notes = $this->_('To disable the module simply leave this field empty.');
+		$f->description .= $this->_('You can temporarily disable a rule by starting the line with two forward slashes.');
+		$f->notes = $this->_('To disable the module simply leave this field empty.') . "\n";
+		$f->notes .= $this->_('If you are using ProCache you may want to clear the cache after making changes to these access rules.');
 		$f->value = $this->$f_name;
 		$f->rows = 5;
 		$inputfields->add($f);
@@ -227,9 +231,12 @@ EOT;
 		if(!empty($data['access_rules_str'])) {
 			$lines = explode("\n", str_replace("\r", "", $data['access_rules_str']));
 			$rules = array();
-			foreach($lines as $key => $value) {
-				if(!strpos($value, '??')) continue;
-				list($k, $v) = explode('??', $value, 2);
+			foreach($lines as $line) {
+				// Line must contain ??
+				if(!strpos($line, '??')) continue;
+				// Skip lines that start with two forward slashes
+				if(substr($line, 0, 2) === '//') continue;
+				list($k, $v) = explode('??', $line, 2);
 				$rules[trim($k)] = trim($v);
 			}
 			$data['access_rules'] = $rules;

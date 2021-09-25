@@ -30,6 +30,12 @@ Or you could limit view access to the whole frontend with a rule like...
 4fU4ns7ZWXar??template!=admin
 ```
 
+To temporarily disable an access rule, start the line with two forward slashes, e.g.
+
+```
+//4fU4ns7ZWXar??template!=admin
+```
+
 You can choose what happens when a protected page is visited without the required GET variable:
 
 * Replace the rendered markup
